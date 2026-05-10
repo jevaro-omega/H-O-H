@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Ω H₂O – Organische, prolate Ellipsoide (Quarkduos) · ∇Φ ∥ ∇W</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Courier New', monospace; }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+            pointer-events: none;
+            z-index: 10;
+            font-size: 14px;
+            border-left: 3px solid #ffaa44;
+            font-family: monospace;
+        }
+        #controls-note {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255,255,255,0.5);
+            background: rgba(0,0,0,0.5);
+            padding: 4px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+        @media (max-width: 600px) {
+            #info { font-size: 10px; padding: 8px 16px; top: 10px; left: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong style="color:#ffaa66;">Ω H₂O · Organische prol. Ellipsoide</strong><br>
+        9 × Quarkduos (36 Tori) | Gestreckt entlang der Polachse | ∇Φ ∥ ∇W · dΦ = 0
+    </div>
+    <div id="controls-note">🔍 Maus: Rotation | Rechtsklick: Zoom | Touch: Drehen/Zoomen</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050b1a);
+        scene.fog = new THREE.FogExp2(0x050b1a, 0.012);
+
+        const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(3.8, 2.5, 5.2);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
+        // --- Controls ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.06;
+        controls.rotateSpeed = 1.2;
+        controls.zoomSpeed = 1.2;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.target.set(0, 0, 0);
+
+        // --- Beleuchtung (metallischer Glanz) ---
+        const ambient = new THREE.AmbientLight(0x22223b);
+        scene.add(ambient);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        mainLight.position.set(3, 5, 2);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+        const fillLight = new THREE.PointLight(0xcc8844, 0.5);
+        fillLight.position.set(0, -1.5, 1);
+        scene.add(fillLight);
+        const backLight = new THREE.PointLight(0x6688aa, 0.5);
+        backLight.position.set(-1, 1, -2);
+        scene.add(backLight);
+        const dynamicLight = new THREE.PointLight(0xff8844, 0.9);
+        dynamicLight.position.set(1, 0.5, 1.5);
+        scene.add(dynamicLight);
+        const rimLight = new THREE.PointLight(0xffaa66, 0.6);
+        rimLight.position.set(2, 1.5, -1);
+        scene.add(rimLight);
+
+        // --- Hilfsfunktion: Prolates Ellipsoid (Rugbyball-Form) mit definierter Polachse ---
+        function createProlateSpheroid(color, position, directionVec, stretch = 1.35, radius = 0.45, metalnessVal = 0.92) {
+            const dir = directionVec.clone().normalize();
+            const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+            const geometry = new THREE.SphereGeometry(radius, 56, 56);
+            const material = new THREE.MeshStandardMaterial({
+                color: color,
+                metalness: metalnessVal,
+                roughness: 0.22,
+                emissive: color,
+                emissiveIntensity: 0.28,
+                envMapIntensity: 1.0
+            });
+            const spheroid = new THREE.Mesh(geometry, material);
+            spheroid.scale.set(1.0, 1.0, stretch);
+            spheroid.quaternion.copy(quat);
+            spheroid.position.copy(position);
+            spheroid.castShadow = true;
+            spheroid.userData = {
+                baseStretch: stretch,
+                pulseSpeed: 0.85 + Math.random() * 0.5,
+                phase: Math.random() * Math.PI * 2
+            };
+            return spheroid;
+        }
+
+        // --- 1. Sauerstoff: 3 Ellipsoide, geschlossene kompakte Einheit (organisch überlappend) ---
+        const oxygenSpheres = [];
+        const oColor = 0xdc9c4c;
+        // Positionen der O-Sphären (bewährt aus der metallischen Version, leicht überlappend)
+        const oPositions = [
+            { pos: [0, 0.05, 0.1], dir: [0.2, -0.1, -0.3], rad: 0.52, stretch: 1.32 },
+            { pos: [0.38, -0.18, -0.12], dir: [-0.3, 0.1, 0.2], rad: 0.55, stretch: 1.3 },
+            { pos: [-0.38, -0.18, -0.12], dir: [0.3, 0.1, 0.2], rad: 0.55, stretch: 1.3 }
+        ];
+        oPositions.forEach(p => {
+            const sphere = createProlateSpheroid(oColor, new THREE.Vector3(p.pos[0], p.pos[1], p.pos[2]), new THREE.Vector3(p.dir[0], p.dir[1], p.dir[2]), p.stretch, p.rad, 0.94);
+            oxygenSpheres.push(sphere);
+            scene.add(sphere);
+        });
+
+        // --- 2. Wasserstoff 1: 3 Ellipsoide, offene Kette nach links/unten ---
+        const h1Color = 0x5a9cff;
+        const h1Spheres = [];
+        const h1Positions = [
+            { pos: [-0.98, 0.18, 0.68], dir: [-0.4, 0.1, 0.85], rad: 0.48, stretch: 1.45 },
+            { pos: [-1.42, -0.08, 0.34], dir: [-0.6, -0.2, 0.7], rad: 0.46, stretch: 1.48 },
+            { pos: [-0.72, -0.44, 1.02], dir: [0.1, -0.5, 0.85], rad: 0.49, stretch: 1.47 }
+        ];
+        h1Positions.forEach(p => {
+            const sphere = createProlateSpheroid(h1Color, new THREE.Vector3(p.pos[0], p.pos[1], p.pos[2]), new THREE.Vector3(p.dir[0], p.dir[1], p.dir[2]), p.stretch, p.rad, 0.9);
+            h1Spheres.push(sphere);
+            scene.add(sphere);
+        });
+
+        // --- 3. Wasserstoff 2: 3 Ellipsoide, offene Kette nach rechts/unten ---
+        const h2Color = 0x6aacff;
+        const h2Spheres = [];
+        const h2Positions = [
+            { pos: [0.98, 0.18, 0.68], dir: [0.4, 0.1, 0.85], rad: 0.48, stretch: 1.45 },
+            { pos: [1.42, -0.08, 0.34], dir: [0.6, -0.2, 0.7], rad: 0.46, stretch: 1.48 },
+            { pos: [0.72, -0.44, 1.02], dir: [-0.1, -0.5, 0.85], rad: 0.49, stretch: 1.47 }
+        ];
+        h2Positions.forEach(p => {
+            const sphere = createProlateSpheroid(h2Color, new THREE.Vector3(p.pos[0], p.pos[1], p.pos[2]), new THREE.Vector3(p.dir[0], p.dir[1], p.dir[2]), p.stretch, p.rad, 0.9);
+            h2Spheres.push(sphere);
+            scene.add(sphere);
+        });
+
+        // --- Kopplungsleuchten (Überlappungszonen) ---
+        function addGlowKnot(position, color = 0xff8844, size = 0.1) {
+            const geometry = new THREE.SphereGeometry(size, 24, 24);
+            const material = new THREE.MeshStandardMaterial({ color: color, emissive: 0xff4422, emissiveIntensity: 0.8, metalness: 0.2 });
+            const knot = new THREE.Mesh(geometry, material);
+            knot.position.copy(position);
+            scene.add(knot);
+        }
+        // Kopplung zwischen O und H1 / O und H2
+        addGlowKnot(new THREE.Vector3(-0.58, 0.06, 0.46), 0xffaa66, 0.11);
+        addGlowKnot(new THREE.Vector3(0.58, 0.06, 0.46), 0xffaa66, 0.11);
+        // Leichte Verbindungslinien (Spannungsfluss)
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xff8855 });
+        const geo1 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.2, 0, 0.2), new THREE.Vector3(-0.98, 0.18, 0.68)]);
+        const geo2 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.2, 0, 0.2), new THREE.Vector3(0.98, 0.18, 0.68)]);
+        const line1 = new THREE.Line(geo1, lineMat);
+        const line2 = new THREE.Line(geo2, lineMat);
+        scene.add(line1);
+        scene.add(line2);
+
+        // --- Labels ---
+        function makeLabel(text, color, position, fontSize = '0.75rem') {
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.style.color = color;
+            div.style.fontSize = fontSize;
+            div.style.fontWeight = 'bold';
+            div.style.background = 'rgba(0,0,0,0.6)';
+            div.style.padding = '2px 12px';
+            div.style.borderRadius = '20px';
+            div.style.borderLeft = `3px solid ${color}`;
+            div.style.fontFamily = 'monospace';
+            div.style.backdropFilter = 'blur(4px)';
+            const label = new CSS2DObject(div);
+            label.position.copy(position);
+            return label;
+        }
+        const oLabel = makeLabel('⚛️ Sauerstoff · 3 prol. Ellipsoide · geschlossen', '#ffaa66', new THREE.Vector3(0, 1.05, 0));
+        const h1Label = makeLabel('H¹ · 3 prol. Ellipsoide · offene Kette', '#88aaff', new THREE.Vector3(-1.85, -0.75, 1.35));
+        const h2Label = makeLabel('H² · 3 prol. Ellipsoide · offene Kette', '#88aaff', new THREE.Vector3(1.85, -0.75, 1.35));
+        scene.add(oLabel);
+        scene.add(h1Label);
+        scene.add(h2Label);
+
+        // --- Partikelwolke (Spannungsfeld) ---
+        const particleCount = 850;
+        const particleGeo = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
+            const rad = 2.6 + Math.random() * 1.7;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            particlePositions[i*3] = rad * Math.sin(phi) * Math.cos(theta);
+            particlePositions[i*3+1] = rad * Math.sin(phi) * Math.sin(theta);
+            particlePositions[i*3+2] = rad * Math.cos(phi);
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particleMat = new THREE.PointsMaterial({ color: 0x88aaff, size: 0.045, transparent: true, opacity: 0.3 });
+        const particles = new THREE.Points(particleGeo, particleMat);
+        scene.add(particles);
+
+        // --- Animation: Längenpulsation und Emission (∇Φ ∥ ∇W) ---
+        let time = 0;
+        const allSpheroids = [...oxygenSpheres, ...h1Spheres, ...h2Spheres];
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.016;
+
+            allSpheroids.forEach((s, idx) => {
+                const pulse = 0.88 + Math.sin(time * s.userData.pulseSpeed + s.userData.phase) * 0.12;
+                const newStretch = s.userData.baseStretch * pulse;
+                s.scale.set(1.0, 1.0, newStretch);
+                const intensity = 0.28 + Math.sin(time * 1.9 + idx) * 0.22;
+                s.material.emissiveIntensity = intensity;
+            });
+
+            dynamicLight.position.x = Math.sin(time * 0.7) * 1.2;
+            dynamicLight.position.z = Math.cos(time * 0.9) * 1.5;
+            dynamicLight.intensity = 0.7 + Math.sin(time * 1.5) * 0.25;
+            rimLight.position.x = 2 + Math.sin(time * 0.5) * 0.5;
+            particles.rotation.y = time * 0.03;
+            particles.rotation.x = time * 0.02;
+
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        console.log('Ω H₂O | Organische prol. Ellipsoide | 9 Quarkduos | dΦ=0 | ∇Φ ∥ ∇W');
+    </script>
+</body>
+</html>
